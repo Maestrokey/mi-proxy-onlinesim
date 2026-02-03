@@ -1,10 +1,8 @@
-const http = require('http');
-const httpProxy = require('http-proxy');
 const express = require('express');
-const url = require('url');
+const proxy = require('proxy-chain');
 
 const app = express();
-const proxy = httpProxy.createProxyServer({});
+const port = process.env.PORT || 10000;
 
 // Variable de entorno para la API Key de OnlineSim
 const API_KEY = process.env.API_KEY;
@@ -14,36 +12,28 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-// Middleware para manejar las peticiones al proxy
-app.use('/api', (req, res) => {
-  // Construimos la URL de destino para OnlineSim
-  const targetUrl = `https://onlinesim.io${req.path}?apikey=${API_KEY}`;
+// Crear el proxy túnel
+const proxyServer = proxy.createProxyServer({});
 
-  // Opciones para el proxy
-  const options = {
-    target: targetUrl,
-    changeOrigin: true, // Esencial para que el destino (onlinesim.io) funcione bien
-    ignorePath: true, // Ignora la ruta original porque ya la construimos en targetUrl
-  };
-
-  // Reenviamos la petición
-  proxy.web(req, res, options, (err) => {
-    console.error('Error en el proxy:', err);
-    res.status(500).send('Error en el proxy.');
+// Middleware para manejar todas las peticiones y reenviarlas al proxy túnel
+app.use('/', (req, res) => {
+  console.log(`Recibida petición: ${req.method} ${req.url}`);
+  proxyServer.web(req, res, {
+    target: 'https://onlinesim.io',
+    changeOrigin: true,
   });
 });
 
 // Manejo de errores del proxy
-proxy.on('error', (err, req, res) => {
-  console.error('Error de proxy general:', err);
+proxyServer.on('error', (err, req, res) => {
+  console.error('Error en el proxy:', err);
   if (!res.headersSent) {
-    res.writeHead(500, { 'Content-Type': 'text/plain' });
+    res.writeHead(502, { 'Content-Type': 'text/plain' });
   }
   res.end('Error de proxy.');
 });
 
 // Iniciar el servidor
-const PORT = process.env.PORT || 10000;
-http.createServer(app).listen(PORT, () => {
-  console.log(`🚀 Servidor Proxy corriendo en el puerto ${PORT}`);
+app.listen(port, () => {
+  console.log(`🚀 Servidor Proxy Túnel corriendo en el puerto ${port}`);
 });
