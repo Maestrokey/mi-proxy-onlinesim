@@ -1,18 +1,18 @@
-// proxy-server.js
-const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const cors = require('cors');
+const proxy = require('http-proxy-middleware');
 
-const app = express();
-app.use(cors());
+// ... (código del servidor)
 
-app.use('/api/*', createProxyMiddleware({
-  target: 'https://onlinesim.io',
-  changeOrigin: true,
-  pathRewrite: { '^/api': '' },
-}));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`🚀 Proxy server corriendo en el puerto ${PORT}`);
-});
+app.use(
+  '/api',
+  proxy.createProxyMiddleware({
+    target: 'https://onlinesim.io',
+    changeOrigin: true, // <-- ¡CAMBIO CLAVE! Esto ajusta las cabeceras para el túnel.
+    pathRewrite: {
+      '^/api': '', // Elimina '/api' de la URL
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      // Inyecta tu API Key aquí
+      proxyReq.path += '?apikey=' + process.env.API_KEY;
+    },
+  })
+);
