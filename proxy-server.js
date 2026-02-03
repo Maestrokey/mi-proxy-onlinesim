@@ -1,8 +1,10 @@
+const http = require('http');
+const httpProxy = require('http-proxy');
 const express = require('express');
-const proxy = require('proxy-chain');
 
 const app = express();
-const port = process.env.PORT || 10000;
+const proxy = httpProxy.createProxyServer({});
+const PORT = process.env.PORT || 10000;
 
 // Variable de entorno para la API Key de OnlineSim
 const API_KEY = process.env.API_KEY;
@@ -12,28 +14,40 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-// Crear el proxy túnel
-const proxyServer = proxy.createProxyServer({});
+// Middleware para manejar todas las peticiones y reenviarlas al proxy
+app.use('/api', (req, res) => {
+  console.log(`Recibida petición para: ${req.method} ${req.path}`);
 
-// Middleware para manejar todas las peticiones y reenviarlas al proxy túnel
-app.use('/', (req, res) => {
-  console.log(`Recibida petición: ${req.method} ${req.url}`);
-  proxyServer.web(req, res, {
-    target: 'https://onlinesim.io',
+  // Construimos la URL de destino para OnlineSim
+  const targetUrl = `https://onlinesim.io${req.path}?apikey=${API_KEY}`;
+
+  // Opciones para el proxy
+  const options = {
+    target: targetUrl,
     changeOrigin: true,
+    ignorePath: true,
+  };
+
+  // Reenviamos la petición
+  proxy.web(req, res, options, (err) => {
+    console.error('Error en el proxy:', err);
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' });
+    }
+    res.end('Error en el proxy.');
   });
 });
 
 // Manejo de errores del proxy
-proxyServer.on('error', (err, req, res) => {
-  console.error('Error en el proxy:', err);
+proxy.on('error', (err, req, res) => {
+  console.error('Error de proxy general:', err);
   if (!res.headersSent) {
-    res.writeHead(502, { 'Content-Type': 'text/plain' });
+    res.writeHead(500, { 'Content-Type': 'text/plain' });
   }
   res.end('Error de proxy.');
 });
 
 // Iniciar el servidor
-app.listen(port, () => {
-  console.log(`🚀 Servidor Proxy Túnel corriendo en el puerto ${port}`);
+http.createServer(app).listen(PORT, () => {
+  console.log(`🚀 Servidor Proxy corriendo en el puerto ${PORT}`);
 });
