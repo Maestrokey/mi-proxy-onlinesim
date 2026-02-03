@@ -1,13 +1,13 @@
 {
   "name": "onlinesim-proxy",
   "version": "1.0.0",
-  "description": "Proxy túnel robusto para la API de OnlineSim",
+  "description": "Proxy simple y robusto para la API de OnlineSim",
   "main": "proxy-server.js",
   "scripts": {
     "start": "node proxy-server.js"
   },
   "dependencies": {
-    "proxy-chain": "^2.0.0",
+    "http-proxy": "^1.18.1",
     "express": "^4.18.2"
   },
   "engines": {
